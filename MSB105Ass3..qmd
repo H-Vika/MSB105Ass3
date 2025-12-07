@@ -469,50 +469,14 @@ bBFjHL <- pend_02_24 %>%
 ```
 
 ```{r}
-# forutsetninger:
-# - du har et datasett `pend_02_24` (eller tilsvarende) med kolonnene:
-#   aar (eller Tid), bkom (bosted, f.eks. "k1103"), akom (arbeidssted, f.eks. "k1103"), pendlere (antall)
-# - du har definert BF som vektor over kommune-/regionkoder med "k" prefix:
-#   BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
-#   (dersom knr_u_SSV er en vektor med koder, sett den sammen slik som i oppgavebeskrivelsen)
-#
-# Eksempel (bytt ut med dine faktiske koder):
-# knr_u_SSV <- c("k1101","k1102")        # eksempel — erstatt fra oppgaveteksten
-# BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
-
-library(dplyr)
-library(tidyr)
-
-# --- 1) Bor i BF, jobber i hele landet (inkl. BF) ---
-bBFjHL <- pend_02_24 %>%
-  filter(bkom %in% BF) %>%           # personer bosatt i Bokna-regionen
-  group_by(aar) %>%
-  summarise(bBFjHL = sum(pendlere, na.rm = TRUE), .groups = "drop") %>%
-  arrange(aar) %>%
-  as_tibble()
-
-# --- 2) Bor i RAL (utenfor BF), jobber i BF ---
 bRALjBF <- pend_02_24 %>%
-  filter(!bkom %in% BF,               # bosatt utenfor Bokna (RAL)
-         akom %in% BF) %>%            # arbeidssted i Bokna
+  filter(!bkom %in% BF,     # bor utenfor BF (RAL)
+         akom %in% BF) %>%  # jobber i BF
   group_by(aar) %>%
-  summarise(bRALjBF = sum(pendlere, na.rm = TRUE), .groups = "drop") %>%
-  arrange(aar) %>%
-  as_tibble()
-
-# --- 3) Slå sammen for sammenlikning (sørg for samme årerekke i begge) ---
-# Hvis noen år mangler i en av tabellene bruker vi full join for å få alle år med NA -> 0
-sammen <- full_join(bBFjHL, bRALjBF, by = "aar") %>%
-  replace_na(list(bBFjHL = 0, bRALjBF = 0)) %>%
-  arrange(aar) %>%
-  as_tibble()
-
-# Vis resultater
-print(bBFjHL, n = Inf)
-print(bRALjBF, n = Inf)
-print(sammen, n = Inf)
-
+  summarise(bRALjBF = sum(pendlere), .groups = "drop")
 ```
+
+
 
 ```{r}
 tot_arb_HL <- left_join(tot_arb_HL, bBFjHL, by = join_by(aar))
@@ -530,7 +494,6 @@ total = tot_arb_HL %>%
     .before = pendlere
   )
 ```
-
 
 
 
