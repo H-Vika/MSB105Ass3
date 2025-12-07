@@ -31,6 +31,9 @@ library(PxWebApiData) |> suppressPackageStartupMessages()
 library(flextable) |> suppressPackageStartupMessages()
 ```
 
+Her skal pendle-mønsteret bli studert mellom en norsk region. dette er seks regioner rundt Boknafjorden. Total i de seks regionene så er det 20 kommuner. I denne oppgaven skal vi ta for oss at hver region er et arbeidsmarked og vi skal studere arbeidspendlingene som foregår i de regionene. 
+Formålet med oppgaven er å lære å hente inn data fra SSB via en API, samt skifte mellom "long" og "wide" format for dataene våre. Her skal vi lage et "tidy" datasett for alle pendling mellom disse regionnene for årene 2002-2024. 
+
 ```{r}
 knr <- as.character(
   c(
@@ -39,6 +42,10 @@ knr <- as.character(
     1134, 1135, 1154, 1160, 1211, 4611, 1129, 1141, 1142
     )
   )
+```
+```{r}
+#For at dokumentet skal kunne lese spesial bokstavene måtte jeg legge inn denne.
+Sys.setlocale("LC_CTYPE", "UTF-8")
 ```
 
 ```{r}
@@ -51,7 +58,7 @@ knavn <- c(
   "Vindafjord", "Etne (-2019)", "Etne",
   "Forsand (-2019)", "Finnøy (-2020)", "Rennesøy (-2020)"
 )
-
+# Då har vi fått inn noen values på kommunene 
 ```
 
 ```{r}
@@ -108,8 +115,8 @@ print(pend_02_24_boBF, n = 5)
 ```{r}
 pend_02_24_ssb_arbBF <- ApiData12(
     urlToData = "03321",
-    ArbstedKomm = list('*'),
-    Bokommuen = knr, # Merk skrivemåten
+    ArbstedKomm = knr,       # Alle arbeidsstedskommuner i Bokna-regionen
+    Bokommuen = list('*'),   # Alle bostedskommuner i Norge
     Tid = as.character(2002:2024)
 )
 ```
@@ -144,6 +151,388 @@ pend_02_24_arbBF <- pend_02_24_ssb_arbBF %>%
 ```{r}
 print(pend_02_24_arbBF, n = 5)
 ```
+
+## Kommunesammenslåingene
+- Lage nye variabler nye_akom og nye_bkom som tar hensyn til kommmunesammeslåingen "nye stavanger" og "nye sandes" fra 01.01.2020. Legger også til en "super kommune" som er resten av landet (RAL) (fortsett å skrive mer etter å ha fått inn alle kodene)
+
+```{r}
+# knr Bokn-regionen utenom kommunene som inngår i Nye Stavanger,
+# Nye Sandnes og Vindafjord
+knr_u_SSV <- paste(
+  "k", 
+  c(
+    1124, 1127, 1120, 1122, 1121, 1119, 1144, 1130, 1106, 1146, 1149, 1145, 1133, 1134, 1135,  1102, 4611, 4612
+    ),
+  sep = ""
+)
+```
+
+
+## Bosted rundt Boknafjorden
+
+```{r}
+pend_02_24_boBF <- pend_02_24_boBF %>% 
+  mutate(
+    nye_bkom = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+      bkom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+      bkom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+      # Øvrige  Bokna-region beholder sin bkom
+      TRUE ~ bkom
+    ),
+    nye_bkom_navn = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+      bkom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+      bkom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+      # Øvrige  Bokna-region beholder sitt bkom_navn
+      TRUE ~ bkom_navn
+    ),
+    nye_akom = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+      akom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+      akom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+      # Øvrige  Bokna-regionen beholder sin akom
+      akom %in% knr_u_SSV ~ akom,   
+      # Resten av landet kodes som knr "9999"
+      TRUE ~ "k9999"
+    ),
+    nye_akom_navn = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+      akom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+      akom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+      # Øvrige Bokna-regionen beholder sitt akom_navn
+      akom %in% knr_u_SSV ~ akom_navn,  
+      # Resten av landet kodes som knr "RAL"
+      TRUE ~ "RAL"
+      )
+  )
+```
+
+
+```{r}
+library(dplyr)
+
+pend_02_24_boBF_sum <- pend_02_24_boBF %>% 
+  group_by(
+    aar,
+    nye_akom,
+    nye_akom_navn,
+    nye_bkom,
+    nye_bkom_navn
+  ) %>% 
+  summarise(
+    pendlere = sum(pendlere, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+stavanger <- pend_02_24_boBF_sum %>% 
+  filter(nye_akom == "k1103", nye_bkom == "k1103") %>% 
+  arrange(aar)
+```
+
+```{r}
+bkom_liste <- c(
+  "k1103","k1106","k1108","k1119","k1120","k1121","k1122","k1124",
+  "k1127","k1130","k1133","k1134","k1135","k1144","k1145","k1146",
+  "k1149","k1160","k4611","k4612"
+)
+
+pend_02_24_boBF_bkom <- pend_02_24_boBF_sum %>% 
+  filter(nye_bkom %in% bkom_liste)
+
+```
+
+```{r}
+pend_02_24_boBF_agg <- pend_02_24_boBF %>%
+    group_by(aar, nye_akom, nye_akom_navn, nye_bkom, nye_bkom_navn) %>%
+    summarise(pendlere = sum(pendlere), .groups = "drop")
+```
+
+
+```{r}
+pend_02_24_boBF_agg |>
+  distinct(nye_akom) |> 
+  pull(nye_akom) |> 
+  print(width = 70)
+```
+
+## Arbeidssted Bokna-Regionen
+
+```{r}
+pend_02_24_arbBF <- pend_02_24_arbBF %>% 
+  mutate(
+    nye_bkom = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+      bkom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+      bkom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+      # Øvrige  Bokna-region beholder sin bkom
+      TRUE ~ bkom
+    ),
+    nye_bkom_navn = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+      bkom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+      bkom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+      # Øvrige  Bokna-region beholder sitt bkom_navn
+      TRUE ~ bkom_navn
+    ),
+    nye_akom = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+      akom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+      akom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+      # Øvrige  Bokna-regionen beholder sin akom
+      akom %in% knr_u_SSV ~ akom,   
+      # Resten av landet kodes som knr "9999"
+      TRUE ~ "k9999"
+    ),
+    nye_akom_navn = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+      akom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+      akom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+      # Øvrige Bokna-regionen beholder sitt akom_navn
+      akom %in% knr_u_SSV ~ akom_navn,  
+      # Resten av landet kodes som knr "RAL"
+      TRUE ~ "RAL"
+      )
+  )
+```
+
+
+```{r}
+library(dplyr)
+
+pend_02_24_arbBF_sum <- pend_02_24_arbBF %>% 
+  group_by(
+    aar,
+    nye_akom,
+    nye_akom_navn,
+    nye_bkom,
+    nye_bkom_navn
+  ) %>% 
+  summarise(
+    pendlere = sum(pendlere, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+stavanger <- pend_02_24_arbBF_sum %>% 
+  filter(nye_akom == "k1103", nye_bkom == "k1103") %>% 
+  arrange(aar)
+```
+
+```{r}
+bkom_liste <- c(
+  "k1103","k1106","k1108","k1119","k1120","k1121","k1122","k1124",
+  "k1127","k1130","k1133","k1134","k1135","k1144","k1145","k1146",
+  "k1149","k1160","k4611","k4612"
+)
+
+pend_02_24_arbBF_bkom <- pend_02_24_arbBF_sum %>% 
+  filter(nye_bkom %in% bkom_liste)
+
+```
+
+```{r}
+pend_02_24_arbBF_agg <- pend_02_24_arbBF %>%
+    group_by(aar, nye_akom, nye_akom_navn, nye_bkom, nye_bkom_navn) %>%
+    summarise(pendlere = sum(pendlere), .groups = "drop")
+```
+
+
+```{r}
+pend_02_24_arbBF_agg |>
+  distinct(nye_akom) |> 
+  pull(nye_akom) |> 
+  print(width = 70)
+```
+
+```{r}
+pend_02_24_arbBF_agg <- pend_02_24_arbBF_agg |>
+  rename(
+    akom = nye_akom,
+    akom_navn = nye_akom_navn,
+    bkom = nye_bkom,
+    bkom_navn = nye_bkom_navn
+  )
+```
+
+
+```{r}
+pend_02_24_boBF_agg <- pend_02_24_boBF_agg |>
+  rename(
+    akom = nye_akom,
+    akom_navn = nye_akom_navn,
+    bkom = nye_bkom,
+    bkom_navn = nye_bkom_navn
+  )
+```
+
+Tester for å se om navnene har endret seg:
+```{r}
+names(pend_02_24_arbBF_agg)
+```
+
+```{r}
+names(pend_02_24_boBF_agg)
+```
+
+Slår sammen dataene pend_02_24_arbBF_agg og pend_02_24_boBF_agg til et felles datasett med bruuk av en rbind()
+
+```{r}
+boBF_arb_RAL <- pend_02_24_boBF_agg |>
+  filter(akom == "k9999")
+```
+```{r}
+pend_02_24 <- bind_rows(
+  pend_02_24_arbBF_agg,
+  boBF_arb_RAL
+  )
+```
+Har laget så et datasett som heter pend_02_24 som vi skal bruke i fremtiden.
+
+Noe info om datasettene:
+```{r}
+names(pend_02_24)
+dim(pend_02_24)
+```
+
+```{r}
+names(pend_02_24_arbBF_agg)
+dim(pend_02_24_arbBF_agg)
+```
+
+```{r}
+names(pend_02_24_boBF_agg)
+dim(pend_02_24_boBF_agg)
+```
+
+Rydder så vekk tidligere dataseter:
+```{r}
+rm(boBF_arb_RAL, pend_02_24_arbBF, pend_02_24_boBF, 
+   pend_02_24_ssb_arbBF, pend_02_24_ssb_boBF
+   )
+```
+
+## Totalt antall arbeidstakere i hele landet per år
+
+Vi må få laste ned alle bostedkommuner og alle jobbkommuner samtidig. 
+
+```{r}
+# oppdatert med "31", "32", "33", "39", "40", "55", "56"
+# for splitting i 2024
+fnr <- c(
+  "30", "01", "02", "06", "03", "34", "04", "05", "38",
+  "07", "08", "42", "09", "10", "11", "46", "12", "14",
+  "15", "50", "16", "17", "18", "54", "19", "20", "31", 
+  "32", "33", "39", "40", "55", "56"
+  )
+```
+
+```{r}
+#| cache: true
+tot_arb_HL_ssb <- ApiData12(
+    urlToData = "11616",
+    Region = fnr,
+    Alder = "15-74", # få med alle i lovlig arbeidsalder
+    Tid = as.character(2002:2024)
+)
+```
+
+```{r}
+tot_arb_HL <- tot_arb_HL_ssb %>%
+  group_by(Tid) %>%                       # ett år om gangen
+  summarise(
+    arbtak_HL = sum(value, na.rm = TRUE), # summer alle regioner = hele landet
+    .groups = "drop"
+  ) %>%
+  rename(aar = Tid) %>%                   # gjør om kolonnenavn
+  arrange(aar) %>%
+  as_tibble()
+
+# Vis toppen for kontroll
+print(tot_arb_HL, n = Inf)
+```
+
+
+```{r}
+BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
+```
+
+```{r}
+# bor i BF jobber hele landet inkl. BF
+bBFjHL <- pend_02_24 %>% 
+  filter(bkom %in% BF) %>% 
+  group_by(aar) %>% 
+  summarise(bBFjHL = sum(pendlere))
+```
+
+```{r}
+# forutsetninger:
+# - du har et datasett `pend_02_24` (eller tilsvarende) med kolonnene:
+#   aar (eller Tid), bkom (bosted, f.eks. "k1103"), akom (arbeidssted, f.eks. "k1103"), pendlere (antall)
+# - du har definert BF som vektor over kommune-/regionkoder med "k" prefix:
+#   BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
+#   (dersom knr_u_SSV er en vektor med koder, sett den sammen slik som i oppgavebeskrivelsen)
+#
+# Eksempel (bytt ut med dine faktiske koder):
+# knr_u_SSV <- c("k1101","k1102")        # eksempel — erstatt fra oppgaveteksten
+# BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
+
+library(dplyr)
+library(tidyr)
+
+# --- 1) Bor i BF, jobber i hele landet (inkl. BF) ---
+bBFjHL <- pend_02_24 %>%
+  filter(bkom %in% BF) %>%           # personer bosatt i Bokna-regionen
+  group_by(aar) %>%
+  summarise(bBFjHL = sum(pendlere, na.rm = TRUE), .groups = "drop") %>%
+  arrange(aar) %>%
+  as_tibble()
+
+# --- 2) Bor i RAL (utenfor BF), jobber i BF ---
+bRALjBF <- pend_02_24 %>%
+  filter(!bkom %in% BF,               # bosatt utenfor Bokna (RAL)
+         akom %in% BF) %>%            # arbeidssted i Bokna
+  group_by(aar) %>%
+  summarise(bRALjBF = sum(pendlere, na.rm = TRUE), .groups = "drop") %>%
+  arrange(aar) %>%
+  as_tibble()
+
+# --- 3) Slå sammen for sammenlikning (sørg for samme årerekke i begge) ---
+# Hvis noen år mangler i en av tabellene bruker vi full join for å få alle år med NA -> 0
+sammen <- full_join(bBFjHL, bRALjBF, by = "aar") %>%
+  replace_na(list(bBFjHL = 0, bRALjBF = 0)) %>%
+  arrange(aar) %>%
+  as_tibble()
+
+# Vis resultater
+print(bBFjHL, n = Inf)
+print(bRALjBF, n = Inf)
+print(sammen, n = Inf)
+
+```
+
+```{r}
+tot_arb_HL <- left_join(tot_arb_HL, bBFjHL, by = join_by(aar))
+tot_arb_HL <- left_join(tot_arb_HL, bRALjBF, by = join_by(aar))
+```
+
+```{r}
+total = tot_arb_HL %>% 
+  select(aar, pendlere = arbtak_HL) %>% 
+  mutate(
+    akom = "k0000",
+    akom_navn = "TotaltBo",
+    bkom = "k0000",
+    bkom_navn = "TotaltArb",
+    .before = pendlere
+  )
+```
+
+
+
 
 
 
