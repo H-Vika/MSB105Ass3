@@ -318,27 +318,175 @@ rm(boBF_arb_RAL, pend_02_24_arbBF, pend_02_24_boBF,
 fnr <- c(
 "30", "01", "02", "06", "03", "34", "04", "05", "38",
 "07", "08", "42", "09", "10", "11", "46", "12", "14",
-"15", "50", "16", "17", "18", "54", "19", "20",
-"31","32","33","39","40","55","56"
+"15", "50", "16", "17", "18", "54", "19", "20", "31",
+ "32", "33", "39", "40", "55", "56"
 )
 
 tot_arb_HL_ssb <- ApiData12(
   urlToData = "11616",
   Region    = fnr,
   Alder     = "15-74",
+  ContentsCode = "Bosatt",
   Tid       = as.character(2002:2024)
 )
 
 tot_arb_HL <- tot_arb_HL_ssb |>
   group_by(Tid) |>
-  summarise(arbtak_HL = sum(value, na.rm = TRUE), .groups = "drop") |>
-    rename(aar = Tid) |>                   # gjør om kolonnenavn
+  summarise(arbtak_HL = sum(value), .groups = "drop") |>
+  rename(aar = Tid) |>
   arrange(aar) |>
   as_tibble()
 
 # Vis toppen for kontroll
 print(tot_arb_HL, n = Inf)
 ```
+
+## Bor i Bokna – jobber hvor som helst
+
+```{r}
+#| label: bBFjHL
+
+BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
+
+
+bBFjHL <- pend_02_24 |>
+  filter(bkom %in% BF) |>
+  group_by(aar) |>
+  summarise(bBFjHL = sum(pendlere), .groups = "drop")
+
+bBFjHL
+
+```
+
+
+
+
+## Bor i RAL – jobber i Bokna
+
+```{r}
+#| label: bRALjBF
+
+bRALjBF <-
+pend_02_24 |>
+filter(bkom == "k9999", akom %in% BF) |>
+group_by(aar) |>
+summarise(bRALjBF = sum(pendlere), .groups = "drop")
+
+bRALjBF
+
+```
+
+## Bor og jobber i RAL
+
+```{r}
+#| label: bRALjRAL
+
+total <- tot_arb_HL |>
+left_join(bBFjHL,  by = "aar") |>
+left_join(bRALjBF, by = "aar") |>
+mutate(
+bRALjRAL = arbtak_HL - bBFjHL - bRALjBF
+)
+
+p_bRALjRAL <- total |>
+transmute(
+aar       = as.character(aar),
+akom      = "k9999",
+akom_navn = "RAL",
+bkom      = "k9999",
+bkom_navn = "RAL",
+pendlere  = bRALjRAL
+)
+
+p_bRALjRAL |> print(n = 5)
+
+```
+
+##
+
+```{r}
+# Legger p_bRALjRAL til pend_02_24
+
+pend_02_24 <- bind_rows(pend_02_24, p_bRALjRAL)
+
+```
+
+```{r}
+#| label: Test-pend_matris
+# Sjekker at ting ser greit ut ved å lage en foreløpig pendle-matrise for 2010
+
+pend_02_24 |>
+  ungroup() |>
+  filter(aar == "2010") |>
+  select(bkom, akom, pendlere) |>
+  pivot_wider(
+    names_from = akom,
+    values_from = pendlere
+    ) |>
+  as_flextable(max_row = 30, show_coltype = FALSE) |>
+  line_spacing(space = 0.3, part = "all") |>
+  colformat_int(big.mark = ' ') |>
+  set_table_properties(width = 0.15, layout = "autofit") |>
+  padding(padding = 3) |>
+  delete_part("foote")
+```
+
+
+## legge til totaler per bosted og arbeidssted
+
+```{r}
+#| label: totaler
+
+totalt_arb <- pend_02_24 |>
+group_by(aar, akom, akom_navn) |>
+summarise(pendlere = sum(pendlere), .groups = "drop") |>
+mutate(
+bkom      = "k0000",
+bkom_navn = "TotaltArb"
+)
+
+totalt_bo <- pend_02_24 |>
+group_by(aar, bkom, bkom_navn) |>
+summarise(pendlere = sum(pendlere), .groups = "drop") |>
+mutate(
+akom      = "k0000",
+akom_navn = "TotaltBo"
+)
+
+pendle_data_02_24 <- bind_rows(pend_02_24, totalt_arb, totalt_bo)
+
+dim(pendle_data_02_24)
+names(pendle_data_02_24)
+print(pendle_data_02_24, n = 5)
+
+```
+
+
+## Andel pendlere
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
