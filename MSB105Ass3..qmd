@@ -431,13 +431,18 @@ fnr <- c(
 ```
 
 ```{r}
+aar_vec <- as.character(2002:2024)
+
 #| cache: true
 tot_arb_HL_ssb <- ApiData12(
     urlToData = "11616",
     Region = fnr,
+    Kjonn = c("1", "2"),
     Alder = "15-74", # få med alle i lovlig arbeidsalder
-    Tid = as.character(2002:2024)
-)
+    ContentsCode = "Sysselsatte personer bosatt i regionen",
+    Tid = aar_vec
+) |>
+  as_tibble()
 ```
 
 ```{r}
