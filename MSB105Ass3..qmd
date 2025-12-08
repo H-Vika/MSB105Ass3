@@ -307,7 +307,6 @@ dim(pend_02_24_boBF_agg)
 # rydder
 rm(boBF_arb_RAL, pend_02_24_arbBF, pend_02_24_boBF,
  pend_02_24_ssb_arbBF, pend_02_24_ssb_boBF
->>>>>>> MagsBranch
 )
 ```
 
