@@ -35,121 +35,402 @@ Her skal pendle-mønsteret bli studert mellom en norsk region. dette er seks reg
 Formålet med oppgaven er å lære å hente inn data fra SSB via en API, samt skifte mellom "long" og "wide" format for dataene våre. Her skal vi lage et "tidy" datasett for alle pendling mellom disse regionnene for årene 2002-2024. 
 
 ```{r}
+#| label: bokna-kommuner
 knr <- as.character(
-  c(
-    1102, 1103, 1108, 1124, 1127, 1120, 1122, 1121, 1119, 
-    1144, 1130, 1106, 1146, 1149, 1216, 4612, 1145, 1133,
-    1134, 1135, 1154, 1160, 1211, 4611, 1129, 1141, 1142
-    )
-  )
-```
-```{r}
-#For at dokumentet skal kunne lese spesial bokstavene måtte jeg legge inn denne.
-Sys.setlocale("LC_CTYPE", "UTF-8")
-```
-
-```{r}
-knavn <- c(
-  "Sandnes (-2019)", "Stavanger", "Nye-Sandnes",
-  "Sola", "Randaberg", "Klepp", "Gjesdal", "Time",
-  "Hå", "Kvitsøy", "Strand", "Haugesund", "Tysvær",
-  "Karmøy", "Sveio (-2019)", "Sveio", "Bokn",
-  "Hjelmeland", "Suldal", "Sauda", "Vindafjord (-2006)",
-  "Vindafjord", "Etne (-2019)", "Etne",
-  "Forsand (-2019)", "Finnøy (-2020)", "Rennesøy (-2020)"
+c(
+1102, 1103, 1108, 1124, 1127, 1120, 1122, 1121, 1119,
+1144, 1130, 1106, 1146, 1149, 1216, 4612, 1145, 1133,
+1134, 1135, 1154, 1160, 1211, 4611, 1129, 1141, 1142
+)
 )
 # Då har vi fått inn noen values på kommunene 
+
+knavn <- c(
+"Sandnes (-2019)", "Stavanger", "Nye-Sandnes",
+"Sola", "Randaberg", "Klepp", "Gjesdal", "Time",
+"Hå", "Kvitsøy", "Strand", "Haugesund", "Tysvær",
+"Karmøy", "Sveio (-2019)", "Sveio", "Bokn",
+"Hjelmeland", "Suldal", "Sauda", "Vindafjord (-2006)",
+"Vindafjord", "Etne (-2019)", "Etne",
+"Forsand (-2019)", "Finnøy (-2020)", "Rennesøy (-2020)"
+)
+
+bokna_komm <- tibble(knr, knavn)
+bokna_komm
 ```
 
+
+
+# Hente data fra SSB
+
 ```{r}
-#Get more info about table
+# Informasjon om tabell
+
 ApiData(
 "http://data.ssb.no/api/v0/en/table/03321",
 returnApiQuery = TRUE
-) 
+)
+
 ```
 
 ```{r}
+#| label: hent-boBF
+#| cache: true
+
 pend_02_24_ssb_boBF <- ApiData12(
-    urlToData = "03321",
-    ArbstedKomm = list('*'),
-    Bokommuen = knr, # Merk skrivemåten
-    Tid = as.character(2002:2024)
+urlToData   = "03321",
+ArbstedKomm = list("*"),
+Bokommuen   = knr,   
+Tid         = as.character(2002:2024)
 )
-```
 
+pend_02_24_boBF <- pend_02_24_ssb_boBF %>%
+ # Henter kommune navn fra desc df
+ mutate(
+ akom_navn = arbeidsstedskommune,
+ bkom_navn = bostedskommune ,
+ akom = paste("k", ArbstedKomm, sep = ""),
+ bkom = paste("k", Bokommuen, sep = ""),
+ # skifter navn og nummer for Etne og Sveio
+ akom = ifelse(akom == "k1211", "k4611", akom),
+ akom = ifelse(akom == "k1216", "k4612", akom),
+ bkom = ifelse(bkom == "k1211", "k4611", bkom),
+ bkom = ifelse(bkom == "k1216", "k4612", bkom),
+ akom_navn = ifelse(akom_navn == "Etne (-2019)", "Etne", akom_navn),
+ akom_navn = ifelse(akom_navn == "Sveio (-2019)", "Sveio", akom_navn),
+ bkom_navn = ifelse(bkom_navn == "Etne (-2019)", "Etne", bkom_navn),
+ bkom_navn = ifelse(bkom_navn == "Sveio (-2019)", "Sveio", bkom_navn)
+ ) %>%
+ # Endrer noen variabelnavn
+ rename(
+ aar = Tid,
+ pendlere = value
+ ) %>%
+ select(aar, akom, akom_navn, bkom, bkom_navn, pendlere) %>%
+ as_tibble()
 
-
-```{r}
-pend_02_24_boBF <- pend_02_24_ssb_boBF %>% 
-  # Henter kommune navn fra desc df
-  mutate(
-    akom_navn = arbeidsstedskommune,
-    bkom_navn = bostedskommune ,
-    akom = paste("k", ArbstedKomm, sep = ""),
-    bkom = paste("k", Bokommuen, sep = ""),
-    # skifter navn og nummer for Etne og Sveio
-    akom = ifelse(akom == "k1211", "k4611", akom),
-    akom = ifelse(akom == "k1216", "k4612", akom),
-    bkom = ifelse(bkom == "k1211", "k4611", bkom),
-    bkom = ifelse(bkom == "k1216", "k4612", bkom),
-    akom_navn = ifelse(akom_navn == "Etne (-2019)", "Etne", akom_navn),
-    akom_navn = ifelse(akom_navn == "Sveio (-2019)", "Sveio", akom_navn),
-    bkom_navn = ifelse(bkom_navn == "Etne (-2019)", "Etne", bkom_navn),
-    bkom_navn = ifelse(bkom_navn == "Sveio (-2019)", "Sveio", bkom_navn)    
-  ) %>% 
-  # Endrer noen variabelnavn
-  rename(
-    aar = Tid,
-    pendlere = value 
-  )  %>%
-  select(aar, akom, akom_navn, bkom, bkom_navn, pendlere) %>% 
-  as_tibble()
-```
-
-
-```{r}
-print(pend_02_24_boBF, n = 5)
+pend_02_24_boBF |> print(n = 5)
 ```
 
 ```{r}
+#| label: hent-arbBF
+#| cache: true
+
 pend_02_24_ssb_arbBF <- ApiData12(
-    urlToData = "03321",
-    ArbstedKomm = knr,       # Alle arbeidsstedskommuner i Bokna-regionen
-    Bokommuen = list('*'),   # Alle bostedskommuner i Norge
-    Tid = as.character(2002:2024)
+urlToData   = "03321",
+ArbstedKomm = knr,            # arbeidssted = kommunene rundt Boknafjorden
+Bokommuen   = list("*"),
+Tid         = as.character(2002:2024)
+)
+
+pend_02_24_arbBF <- pend_02_24_ssb_arbBF %>%
+ # Henter kommune navn fra desc df
+ mutate(
+ akom_navn = arbeidsstedskommune,
+ bkom_navn = bostedskommune ,
+ akom = paste("k", ArbstedKomm, sep = ""),
+ bkom = paste("k", Bokommuen, sep = ""),
+ # skifter navn og nummer for Etne og Sveio
+ akom = ifelse(akom == "k1211", "k4611", akom),
+ akom = ifelse(akom == "k1216", "k4612", akom),
+ bkom = ifelse(bkom == "k1211", "k4611", bkom),
+ bkom = ifelse(bkom == "k1216", "k4612", bkom),
+ akom_navn = ifelse(akom_navn == "Etne (-2019)", "Etne", akom_navn),
+ akom_navn = ifelse(akom_navn == "Sveio (-2019)", "Sveio", akom_navn),
+ bkom_navn = ifelse(bkom_navn == "Etne (-2019)", "Etne", bkom_navn),
+ bkom_navn = ifelse(bkom_navn == "Sveio (-2019)", "Sveio", bkom_navn)
+ ) %>%
+ # Endrer noen variabelnavn
+ rename(
+ aar = Tid,
+ pendlere = value
+ ) %>%
+ select(aar, akom, akom_navn, bkom, bkom_navn, pendlere) %>%
+ as_tibble()
+
+pend_02_24_arbBF |> print(n = 5)
+
+```
+
+## Komunesammenslåing
+```{r}
+#| label: knr-u-SSV
+
+# Liste over kommuner som ikke inngår i de sammenslåtte kommunene
+
+
+knr_u_SSV <- paste(
+  "k",
+  c(
+    1124, 1127, 1120, 1122, 1121, 1119, 1144, 1130,1106, 1146, 1149, 1145,
+    1133, 1134, 1135, 1102,4611, 4612
+    ),
+  sep = ""
+  )
+
+knr_u_SSV
+
+```
+
+```{r}
+#| label: ny-struktur-boBF
+
+pend_02_24_boBF <- pend_02_24_boBF %>%
+ mutate(
+   nye_bkom = case_when(
+     bkom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+     bkom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+     bkom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+ # Øvrige Bokna-region beholder sin bkom
+     TRUE ~ bkom
+ ),
+ nye_bkom_navn = case_when(
+   bkom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+   bkom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+   bkom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+ # Øvrige Bokna-region beholder sitt bkom_navn
+   TRUE ~ bkom_navn
+ ),
+ nye_akom = case_when(
+   akom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+   akom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+   akom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+ # Øvrige Bokna-regionen beholder sin akom
+   akom %in% knr_u_SSV ~ akom,
+ # Resten av landet kodes som knr "9999"
+   TRUE ~ "k9999"
+ ),
+ nye_akom_navn = case_when(
+   akom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+   akom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+   akom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+ # Øvrige Bokna-regionen beholder sitt akom_navn
+   akom %in% knr_u_SSV ~ akom_navn,
+ # Resten av landet kodes som knr "RAL"
+   TRUE ~ "RAL"
+ )
+)
+
+
+pend_02_24_boBF_agg <- pend_02_24_boBF |>
+group_by(
+  aar, nye_akom, nye_akom_navn,
+  nye_bkom, nye_bkom_navn
+  ) |>
+  summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  rename(
+    akom      = nye_akom,
+    akom_navn = nye_akom_navn,
+    bkom      = nye_bkom,
+    bkom_navn = nye_bkom_navn
+    )
+
+pend_02_24_boBF_agg |> print(n = 5)
+
+```
+
+```{r}
+#| label: ny-struktur-arbBF
+
+pend_02_24_arbBF <- pend_02_24_arbBF |>
+ mutate(
+   nye_akom = case_when(
+     akom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+     akom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+     akom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+ # Øvrige Bokna-region beholder sin bkom
+     TRUE ~ akom
+ ),
+ nye_akom_navn = case_when(
+   akom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+   akom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+   akom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+ # Øvrige Bokna-region beholder sitt bkom_navn
+   TRUE ~ akom_navn
+ ),
+ nye_bkom = case_when(
+   bkom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+   bkom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+   bkom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+ # Øvrige Bokna-regionen beholder sin akom
+   bkom %in% knr_u_SSV ~ bkom,
+ # Resten av landet kodes som knr "9999"
+   TRUE ~ "k9999"
+ ),
+ nye_bkom_navn = case_when(
+   bkom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+   bkom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+   bkom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+ # Øvrige Bokna-regionen beholder sitt akom_navn
+   bkom %in% knr_u_SSV ~ bkom_navn,
+ # Resten av landet kodes som knr "RAL"
+   TRUE ~ "RAL"
+ )
+)
+
+
+pend_02_24_arbBF_agg <- pend_02_24_arbBF |>
+group_by(
+  aar, nye_akom, nye_akom_navn,
+  nye_bkom, nye_bkom_navn
+  ) |>
+  summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  rename(
+    akom      = nye_akom,
+    akom_navn = nye_akom_navn,
+    bkom      = nye_bkom,
+    bkom_navn = nye_bkom_navn
+    )
+
+pend_02_24_arbBF_agg |> print(n = 5)
+```
+
+## Samlet pendler datasett for Bokna-regionen + RAL
+
+```{r}
+#| label: kombinert-pend-02-24
+
+boBF_arb_RAL <- pend_02_24_boBF_agg |>
+  filter(akom == "k9999")
+
+pend_02_24 <- bind_rows(
+  pend_02_24_arbBF_agg,
+  boBF_arb_RAL
+)
+
+dim(pend_02_24)
+dim(pend_02_24_arbBF_agg)
+dim(pend_02_24_boBF_agg)
+
+```
+```{r}
+# rydder
+rm(boBF_arb_RAL, pend_02_24_arbBF, pend_02_24_boBF,
+ pend_02_24_ssb_arbBF, pend_02_24_ssb_boBF
+>>>>>>> MagsBranch
 )
 ```
 
+## Totalt antall arbeidstakere i landet (tabell 11616)
+
 ```{r}
-pend_02_24_arbBF <- pend_02_24_ssb_arbBF %>% 
-  # Henter kommune navn fra desc df
-  mutate(
-    akom_navn = arbeidsstedskommune,
-    bkom_navn = bostedskommune ,
-    akom = paste("k", ArbstedKomm, sep = ""),
-    bkom = paste("k", Bokommuen, sep = ""),
-    # skifter navn og nummer for Etne og Sveio
-    akom = ifelse(akom == "k1211", "k4611", akom),
-    akom = ifelse(akom == "k1216", "k4612", akom),
-    bkom = ifelse(bkom == "k1211", "k4611", bkom),
-    bkom = ifelse(bkom == "k1216", "k4612", bkom),
-    akom_navn = ifelse(akom_navn == "Etne (-2019)", "Etne", akom_navn),
-    akom_navn = ifelse(akom_navn == "Sveio (-2019)", "Sveio", akom_navn),
-    bkom_navn = ifelse(bkom_navn == "Etne (-2019)", "Etne", bkom_navn),
-    bkom_navn = ifelse(bkom_navn == "Sveio (-2019)", "Sveio", bkom_navn)    
-  ) %>% 
-  # Endrer noen variabelnavn
-  rename(
-    aar = Tid,
-    pendlere = value 
-  )  %>%
-  select(aar, akom, akom_navn, bkom, bkom_navn, pendlere) %>% 
+#| label: hent-11616
+#| cache: true
+
+fnr <- c(
+"30", "01", "02", "06", "03", "34", "04", "05", "38",
+"07", "08", "42", "09", "10", "11", "46", "12", "14",
+"15", "50", "16", "17", "18", "54", "19", "20", "31",
+ "32", "33", "39", "40", "55", "56"
+)
+
+tot_arb_HL_ssb <- ApiData12(
+  urlToData = "11616",
+  Region    = fnr,
+  Alder     = "15-74",
+  ContentsCode = "Bosatt",
+  Tid       = as.character(2002:2024)
+)
+
+tot_arb_HL <- tot_arb_HL_ssb |>
+  group_by(Tid) |>
+  summarise(arbtak_HL = sum(value), .groups = "drop") |>
+  rename(aar = Tid) |>
+  arrange(aar) |>
   as_tibble()
+
+# Vis toppen for kontroll
+print(tot_arb_HL, n = Inf)
+```
+
+## Bor i Bokna – jobber hvor som helst
+
+```{r}
+#| label: bBFjHL
+
+BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
+
+
+bBFjHL <- pend_02_24 |>
+  filter(bkom %in% BF) |>
+  group_by(aar) |>
+  summarise(bBFjHL = sum(pendlere), .groups = "drop")
+
+bBFjHL
+
+```
+
+
+
+
+## Bor i RAL – jobber i Bokna
+
+```{r}
+#| label: bRALjBF
+
+bRALjBF <-
+pend_02_24 |>
+filter(bkom == "k9999", akom %in% BF) |>
+group_by(aar) |>
+summarise(bRALjBF = sum(pendlere), .groups = "drop")
+
+bRALjBF
+
+```
+
+## Bor og jobber i RAL
+
+```{r}
+#| label: bRALjRAL
+
+total <- tot_arb_HL |>
+left_join(bBFjHL,  by = "aar") |>
+left_join(bRALjBF, by = "aar") |>
+mutate(
+bRALjRAL = arbtak_HL - bBFjHL - bRALjBF
+)
+
+p_bRALjRAL <- total |>
+transmute(
+aar       = as.character(aar),
+akom      = "k9999",
+akom_navn = "RAL",
+bkom      = "k9999",
+bkom_navn = "RAL",
+pendlere  = bRALjRAL
+)
+
+p_bRALjRAL |> print(n = 5)
+
+```
+
+##
+
+```{r}
+# Legger p_bRALjRAL til pend_02_24
+
+pend_02_24 <- bind_rows(pend_02_24, p_bRALjRAL)
+
 ```
 
 ```{r}
-print(pend_02_24_arbBF, n = 5)
+#| label: Test-pend_matris
+# Sjekker at ting ser greit ut ved å lage en foreløpig pendle-matrise for 2010
+
+pend_02_24 |>
+  ungroup() |>
+  filter(aar == "2010") |>
+  select(bkom, akom, pendlere) |>
+  pivot_wider(
+    names_from = akom,
+    values_from = pendlere
+    ) |>
+  as_flextable(max_row = 30, show_coltype = FALSE) |>
+  line_spacing(space = 0.3, part = "all") |>
+  colformat_int(big.mark = ' ') |>
+  set_table_properties(width = 0.15, layout = "autofit") |>
+  padding(padding = 3) |>
+  delete_part("foote")
 ```
 
 ## Kommunesammenslåingene
@@ -499,6 +780,89 @@ total = tot_arb_HL %>%
     .before = pendlere
   )
 ```
+
+
+
+
+## legge til totaler per bosted og arbeidssted
+
+```{r}
+#| label: totaler
+
+totalt_arb <- pend_02_24 |>
+group_by(aar, akom, akom_navn) |>
+summarise(pendlere = sum(pendlere), .groups = "drop") |>
+mutate(
+bkom      = "k0000",
+bkom_navn = "TotaltArb"
+)
+
+totalt_bo <- pend_02_24 |>
+group_by(aar, bkom, bkom_navn) |>
+summarise(pendlere = sum(pendlere), .groups = "drop") |>
+mutate(
+akom      = "k0000",
+akom_navn = "TotaltBo"
+)
+
+pendle_data_02_24 <- bind_rows(pend_02_24, totalt_arb, totalt_bo)
+
+dim(pendle_data_02_24)
+names(pendle_data_02_24)
+print(pendle_data_02_24, n = 5)
+
+```
+
+
+## Andel pendlere
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
