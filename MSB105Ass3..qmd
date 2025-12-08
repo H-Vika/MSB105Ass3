@@ -464,6 +464,106 @@ print(pendle_data_02_24, n = 5)
 
 ## Andel pendlere
 
+```{r}
+# Fikk feil med andel beregningen pga. duplikater
+dups <- pendle_data_02_24 |>
+  dplyr::count(aar, bkom, bkom_navn, akom, akom_navn) |>
+  dplyr::filter(n > 1)
+
+dups
+
+pendle_data_02_24 <- pendle_data_02_24 |>
+  distinct(aar, bkom, bkom_navn, akom, akom_navn, .keep_all = TRUE)
+
+```
+
+```{r}
+#| label: andeler-wide
+
+andel_pendle_data_02_24 <-
+  pendle_data_02_24 |>
+  unite(knrN, akom, akom_navn, sep = "_") |>
+  group_by(aar, bkom, bkom_navn) |>
+  pivot_wider(
+    names_from  = knrN,
+    values_from = pendlere
+  ) |>
+  ungroup() |>
+  mutate(
+    across(
+      .cols = starts_with("k"),
+      .fns  = ~ round(.x / k0000_TotaltBo * 100, 4)
+    )
+  )
+
+names(andel_pendle_data_02_24)
+dim(andel_pendle_data_02_24)
+
+```
+
+```{r}
+tab <- andel_pendle_data_02_24 |>
+  filter(aar == 2017) |>
+  select(-aar, -bkom_navn)
+
+names(tab) <- str_replace_all(names(tab), "_", "\n")
+
+tab |>
+  as_flextable(
+    show_coltype = FALSE,
+    max_row = 30
+    ) |>
+  line_spacing(space = 0.5, part = "body") |>
+  colformat_double(big.mark = ' ', digits = 2) |>
+  set_table_properties(width = 0.25, layout = "autofit") |>
+  padding(padding = 3) |>
+  delete_part("footer")
+
+```
+
+```{r}
+pend_02_24 |>
+ filter(aar == "2002") |>
+ select(akom, akom_navn) |>
+ distinct() |>
+ as_flextable(max_row = 30, show_coltype = FALSE) |>
+ line_spacing(space = 0.3) |>
+ delete_part("footer")
+
+
+```
+
+
+```{r}
+#| label: andeler-long
+
+andel_pendle_data_02_24_long <- andel_pendle_data_02_24 |>
+pivot_longer(
+cols      = -c(aar, bkom, bkom_navn),
+names_to  = "akom_full",
+values_to = "andel"
+) |>
+separate(
+akom_full,
+into = c("akom", "akom_navn"),
+sep  = "_",
+extra = "merge"
+) |>
+# gjør om til <date> slik at det skal se bedre ut i ggplot()
+mutate(
+aar = ymd(paste0(aar, "-01-01"))
+)
+
+# rydder
+apd_0224_l <- andel_pendle_data_02_24_long
+rm(andel_pendle_data_02_24_long)
+
+
+head(apd_0224_l)
+dim(apd_0224_l)
+names(apd_0224_l)
+
+```
 
 
 
@@ -475,14 +575,75 @@ print(pendle_data_02_24, n = 5)
 
 
 
+```{r}
+
+```
+
+# Bo- og arbeidsmarkedsregioner NIBR/TØI 2020
+
+
+```{r}
+
+
+ba49 <- c("k1103", "k1108", "k1124", "k1127", "k1120", "k1122", "k1121", "k1119", "k1144", "k1130")
+ba50 <- c("k1106", "k1146", "k1149", "k1145", "k4612")
+ba51 <- c("k1133")
+ba52 <- c("k1134")
+ba53 <- c("k1135")
+ba55 <- c("k4611", "k1160")
+
+alle_ba <- c(ba49, ba50, ba51, ba52, ba53, ba55)
+
+# bo- og arbeidsregioner
+pend_ba <- pend_02_24 |>
+  mutate(
+    ba_reg_bo = case_when(
+      bkom %in% ba49 ~ "bo49",
+      bkom %in% ba50 ~ "bo50",
+      bkom %in% ba51 ~ "bo51",
+      bkom %in% ba52 ~ "bo52",
+      bkom %in% ba53 ~ "bo53",
+      bkom %in% ba55 ~ "bo55",
+      TRUE          ~ "bo99"      # bor utenfor disse regionene
+    ),
+    ba_reg_arb = case_when(
+      akom %in% ba49 ~ "arb49",
+      akom %in% ba50 ~ "arb50",
+      akom %in% ba51 ~ "arb51",
+      akom %in% ba52 ~ "arb52",
+      akom %in% ba53 ~ "arb53",
+      akom %in% ba55 ~ "arb55",
+      TRUE          ~ "arb99"     # jobber utenfor disse regionene
+    )
+  )
+
+```
+
+```{r}
+ba_tab_2020 <-
+  pend_ba |>
+  filter(aar == "2020") |>
+  group_by(ba_reg_bo, ba_reg_arb) |>
+  summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  tidyr::pivot_wider(
+    names_from  = ba_reg_arb,
+    values_from = pendlere
+  ) |>
+  arrange(ba_reg_bo)
+
+ba_tab_2020
+
+```
 
 
 
+```{r}
+dups2 <- pend_02_24 |>
+  dplyr::count(aar, bkom, bkom_navn, akom, akom_navn) |>
+  dplyr::filter(n > 1)
 
-
-
-
-
+dups2
+```
 
 
 
