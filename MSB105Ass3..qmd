@@ -72,7 +72,7 @@ returnApiQuery = TRUE
 )
 
 ```
-Henter inn arbeidstakere som bor rundt Boknafjorden og jobber i kommuner over hele landet for perdioen 2002-2024
+Henter inn arbeidstakere som bor rundt Boknafjorden og jobber i kommuner over hele landet for perioden 2002-2024
 ```{r}
 #| label: hent-boBF
 #| cache: true
