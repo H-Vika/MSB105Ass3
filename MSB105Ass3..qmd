@@ -568,25 +568,13 @@ apd_0224_l <- andel_pendle_data_02_24_long
 rm(andel_pendle_data_02_24_long)
 
 
-head(apd_0224_l)
+print(apd_0224_l, n = 8, width = 70)
 dim(apd_0224_l)
 names(apd_0224_l)
 
 ```
 
 
-
-
-
-
-
-
-
-
-
-```{r}
-
-```
 
 # Bo- og arbeidsmarkedsregioner NIBR/TØI 2020
 
@@ -648,7 +636,8 @@ ba_tab_2020
 ## Pendling internt i region 49
 
 ```{r}
-
+#| label: tbl-intern49
+#| tbl-cap: " Bo- og arbeidsmarkedmatrise for region 49 for året 2015. Kommunene utenfor regionen er samlet i 9999."
 reg49 <- ba49
 
 pend_reg49_2020 <- pend_02_24 |>
@@ -664,7 +653,11 @@ pend_reg49_2020 <- pend_02_24 |>
     values_from = pendlere
   )
 
-pend_reg49_2020
+flextable(
+  pend_reg49_2020,
+  cwidth = 0.75,
+  cheight = 0.25
+)
 
 ```
 
@@ -701,6 +694,8 @@ pend_02_24 |>
 ### Hvilke kommuner i bo- og arbeidsmarkedregion 49 hadde i 2020 flere arbeidstakere som pendlet ut av regionen enn   det var arbeidstakere utenfor regionen som pendlet inn til kommunen?
 
 ```{r}
+#| label: tbl-innut
+#| tbl-cap: "Viser hvor mange som pendlet inn og ut av arbeidsmarkedregion 49 (Stavanger/Sandnes) i år 2020"
 reg49 <- ba49
 
 pend_2020 <- pend_02_24 |>
@@ -730,7 +725,8 @@ netto_pendling <- pend_ut |>
   filter(netto > 0) |>
   arrange(bkom)
 
-netto_pendling
+flextable(netto_pendling)
+
 
 ```
 
@@ -757,11 +753,11 @@ tab_pendlere <- function(data, knr, y = 2003, n =6) {
 ```
 
 
-## Lag et linjeplot (geom_line()) som viser utviklingen fra 2002 til 2024 i andelen arbeidstakere som bor og jobber i samme kommune. Hint! Sett «aesthetics» group og colour lik bkom (eller akom).
+Lag et linjeplot (geom_line()) som viser utviklingen fra 2002 til 2024 i andelen arbeidstakere som bor og jobber i samme kommune. Hint! Sett «aesthetics» group og colour lik bkom (eller akom).
 
 ```{r}
-#| label: fig-1
-#| title: "Figur 1"
+#| label: fig-andel_samme
+#| fig-cap: "Viser utviklingen i over andel arbeidstakere som bor og jobber i samme kommune fr 2002-2024"
 
 apd_0224_l |>
   filter(
@@ -785,13 +781,16 @@ apd_0224_l |>
 
 ```
 ```{r}
+#| label: tbl-andel
+#| tbl-cap: "Tabell som viser andelen av arbeidstakere som jobber i samme kommune som hvor de bor i 2023"
+
 tab_2023 <- apd_0224_l |>
   filter(
     aar == "2023-01-01",
     akom == bkom,
   ) |>
   mutate(
-    aar = as.integer(substr(aar, 1, 4)),
+    aar = format(as.Date(aar), "%Y"),
     andel = round(andel, 1)
   ) |>
   select(
@@ -802,7 +801,12 @@ tab_2023 <- apd_0224_l |>
   ) |>
   arrange(desc(andel))
 
-tab_2023
+flextable(
+  tab_2023,
+  cwidth = 0.75,
+  cheight = 0.5
+  )
+          
 ```
 
 ```{r}
@@ -811,7 +815,8 @@ utvalg <- c("k1133", "k1119", "k1144", "k1103", "k1130")
 ```
 
 ```{r}
-#| label: fig-2
+#| label: fig-utvlgpend
+#| fig-cap: "Internpendling blant utvalgte kommuner: Hjelmeland, Hå, Kvitsøy, Stavanger og Strand"
 
 apd_0224_l |>
   filter(
@@ -838,7 +843,7 @@ apd_0224_l |>
 
 ### Hva er den generelle trenden? Går utviklingen mot at man bor nært der man jobber?
 
-Fra @fig-1 og @fig-2 ser vi at den generelle trenden viser en svak, men tydelig nedgang i andelen arbeidstakere som jobber i samme kommune som de bor i. Nedgangen er ikke dramatisk, men konsistent. Det betyr at folk i økende grad pendler ut av hjemkommunen sin, og at arbeidsmarkedene i regionen blir mer integrerte over tid. 
+Fra @fig-andel_samme og @fig-utvlgpend ser vi at den generelle trenden viser en svak, men tydelig nedgang i andelen arbeidstakere som jobber i samme kommune som de bor i. Nedgangen er ikke dramatisk, men konsistent. Det betyr at folk i økende grad pendler ut av hjemkommunen sin, og at arbeidsmarkedene i regionen blir mer integrerte over tid. 
 
 ## Hvor jobber folk bosatt i Stavanger kommune?
 
@@ -848,17 +853,20 @@ kommunene for folk som bor i Stavanger. Ta med kommuner som har en andel over 1%
 
 ```{r}
 #| label: plot_pendlere_funksjon
+
+# lager en funksjon for å gjøre det enklere å lage plots
+
 plot_pendlere <- function(data, knr, grense = 1) {
   
   data_plot <- data |>
     filter(
-      bkom == knr,                # bostedskommune du vil se på
+      bkom == knr,                
       !akom %in% c("k0000"),
-      akom != knr, # fjern totaler
-      andel >= grense             # grense filtrerer bort små tall
+      akom != knr, 
+      andel >= grense             
     ) |>
     mutate(
-      Arbeidssted = akom_navn     # nytt navn til legend
+      Arbeidssted = akom_navn 
     )
   
   ggplot(data_plot, aes(
@@ -879,15 +887,16 @@ plot_pendlere <- function(data, knr, grense = 1) {
 ```
 
 ```{r}
-
+#| label: fig-stav
+#| fig-cap: "Utviklingen i pendling ut av Stavanger kommune i perioden 2002 til 2024."
 plot_pendlere(apd_0224_l, "k1103", grense = 1) +
  ylim(0, 12)
 
 ```
 
 ```{r}
-#| label: tbl-1103pend
-#| tbl-cap: Andelene som pendler ut av Stavanger i 2023.
+#| label: tbl-stav
+#| tbl-cap: "Andelene som pendler ut av Stavanger i 2023"
 tab_pendlere(apd_0224_l,"k1103", n = 7) |>
  colformat_double(digits = 3)
 ```
@@ -939,10 +948,13 @@ Lag et linje-plot lik ovenfor, men som nå viser andelen som jobber i de ulike k
 bor i Sandnes. Lag også en tabell som ovenfor som viser de fem med størst andel i 2023.
 
 ```{r}
+#| label: fig-sand
+#| fig-cap: "Utviklingen i pendling ut av Sandnes kommune i perioden 2002 til 2024."
+
 plot_pendlere(apd_0224_l, "k1108", grense = 1.7)
 ```
 ```{r}
-#| label: tbl-AndSand
+#| label: tbl-sand
 #| tbl-cap: "Andelene som pendler ut av Sandnes i 2023"
 tab_pendlere(apd_0224_l, "k1108") |>
  colformat_double(digits = 3)
@@ -957,10 +969,12 @@ Lag et linje-plot lik ovenfor, men som nå viser andelen som jobber i de ulike k
 bor i Sola. Lag også en tabell som ovenfor som viser de fem med størst andel i 2023.
 
 ```{r}
+#| label: "fig-sola"
+#| fig-cap: "Utviklingen i pendling ut av Sola kommune i perioden 2002 til 2024."
 plot_pendlere(apd_0224_l, "k1124", grense = 3)
 ```
 ```{r}
-#| label: tbl-AndSola
+#| label: tbl-sola
 #| tbl-cap: "Andelene som pendler ut av Sola i 2023"
 tab_pendlere(apd_0224_l, "k1124") |>
  colformat_double(digits = 3)
@@ -974,7 +988,8 @@ Lag et linje-plot lik ovenfor, men som nå viser andelen som jobber i de ulike k
 bor i Klepp. Lag også en tabell som ovenfor som viser de fem med størst andel i 2023.
 
 ```{r}
-#| fig-cap: "Utviklingen i pendling ut av Klepp kommune i perioden 2000 til 2023."
+#| label: "fig-klepp"
+#| fig-cap: "Utviklingen i pendling ut av Klepp kommune i perioden 2002 til 2024."
 
 plot_pendlere(apd_0224_l, "k1120", grense = 1.7)
 ```
@@ -982,7 +997,7 @@ plot_pendlere(apd_0224_l, "k1120", grense = 1.7)
 
 
 ```{r}
-#| label: tbl-AndKlepp
+#| label: tbl-Klepp
 #| tbl-cap: "Andelene som pendler ut av Klepp i 2023"
 tab_pendlere(apd_0224_l, "k1120") |>
  colformat_double(digits = 3)
@@ -994,6 +1009,7 @@ Lag et linje-plot lik ovenfor, men som nå viser andelen som jobber i de ulike k
 bor i Bjerkreim. Lag også en tabell som ovenfor som viser de fem med størst andel i 2023.
 
 ```{r}
+#| label: "fig-haug"
 #| fig-cap: "Utviklingen i pendling ut av Haugesund kommune i perioden 2002 til 2024."
 
 plot_pendlere(apd_0224_l, "k1106", grense = 1.7)
@@ -1002,7 +1018,7 @@ plot_pendlere(apd_0224_l, "k1106", grense = 1.7)
 
 
 ```{r}
-#| label: tbl-AndHaug
+#| label: tbl-Haug
 #| tbl-cap: "Pendling ut av Haugesund kommune i 2023."
 tab_pendlere(apd_0224_l, "k1106") |>
  colformat_double(digits = 1)
@@ -1015,6 +1031,7 @@ Lag et linje-plot lik ovenfor, men som nå viser andelen som jobber i de ulike k
 bor på Karmøy. Lag også en tabell som ovenfor som viser de fem med størst andel i 2023.
 
 ```{r}
+#| label: "fig-karm"
 #| fig-cap: "Utviklingen i pendling ut av Karmøy kommune i perioden 2002 til 2024."
 
 plot_pendlere(apd_0224_l, "k1149", grense = 1.7)
@@ -1023,7 +1040,7 @@ plot_pendlere(apd_0224_l, "k1149", grense = 1.7)
 
 
 ```{r}
-#| label: tbl-AndHaug
+#| label: tbl-Karm
 #| tbl-cap: "Pendling ut av Karmøy kommune i 2023."
 tab_pendlere(apd_0224_l, "k1149") |>
  colformat_double(digits = 3)
