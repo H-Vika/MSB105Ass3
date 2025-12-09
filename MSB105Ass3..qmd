@@ -622,7 +622,7 @@ pend_ba <- pend_02_24 |>
 ```
 
 ```{r}
-# I løsningsforslaget står det i under overskriften 2020, men tabellen som vises samsvarer med 2010: (Bo- og            arbeidsmarkedregioner NIBR/TØI 2020)
+# I løsningsforslaget står det i under overskriften 2020, men tabellen som vises samsvarer med 2010: (Bo- og  arbeidsmarkedregioner NIBR/TØI 2020)
 
 ba_tab_2020 <- pend_ba |>
   filter(aar == "2010") |>
@@ -1082,10 +1082,36 @@ pend_mat <- function(data, aar_valgt) {
 
 
 ```{r}
+#| label: tbl-mat2002
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2002"
 pend_mat(pendle_data_02_24, 2002)
+```
+
+
+```{r}
+#| label: tbl-mat2005
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2005"
 pend_mat(pendle_data_02_24, 2005)
+```
+
+
+```{r}
+#| label: tbl-mat2010
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2010"
 pend_mat(pendle_data_02_24, 2010)
+```
+
+
+```{r}
+#| label: tbl-mat2015
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2015"
 pend_mat(pendle_data_02_24, 2015)
+```
+
+
+```{r}
+#| label: tbl-mat2021
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2021"
 pend_mat(pendle_data_02_24, 2021)
 
 ```
