@@ -21,7 +21,7 @@ editor:
     wrap: sentence
 echo: false
 ---
-
+Pakkene brukt for oppgaven:
 ```{r}
 library(tidyverse) |> suppressPackageStartupMessages()
 library(lubridate) |> suppressPackageStartupMessages()
@@ -30,7 +30,9 @@ library(flextable) |> suppressPackageStartupMessages()
 ```
 
 Her skal pendle-mønsteret bli studert mellom en norsk region. dette er seks regioner rundt Boknafjorden. Total i de seks regionene så er det 20 kommuner. I denne oppgaven skal vi ta for oss at hver region er et arbeidsmarked og vi skal studere arbeidspendlingene som foregår i de regionene. 
-Formålet med oppgaven er å lære å hente inn data fra SSB via en API, samt skifte mellom "long" og "wide" format for dataene våre. Her skal vi lage et "tidy" datasett for alle pendling mellom disse regionnene for årene 2002-2024. 
+Formålet med oppgaven er å lære å hente inn data fra SSB via en API, samt skifte mellom "long" og "wide" format for dataene våre. Her skal vi lage et "tidy" datasett for alle pendling mellom disse regionnene for årene 2002-2024.
+
+## Kommune liste for Bokna-regionen
 
 ```{r}
 #| label: bokna-kommuner
@@ -59,7 +61,7 @@ bokna_komm
 
 
 
-# Hente data fra SSB
+## Hente data fra SSB
 
 ```{r}
 # Informasjon om tabell
@@ -70,7 +72,7 @@ returnApiQuery = TRUE
 )
 
 ```
-
+Henter inn arbeidstakere som bor rundt Boknafjorden og jobber i kommuner over hele landet for perdioen 2002-2024
 ```{r}
 #| label: hent-boBF
 #| cache: true
@@ -169,6 +171,7 @@ knr_u_SSV <- paste(
 knr_u_SSV
 
 ```
+## Bosted rundt Boknafjorden
 
 ```{r}
 #| label: ny-struktur-boBF
@@ -226,6 +229,7 @@ group_by(
 pend_02_24_boBF_agg |> print(n = 5)
 
 ```
+## Arbeidssted Bokna-Regionen
 
 ```{r}
 #| label: ny-struktur-arbBF
@@ -412,7 +416,6 @@ p_bRALjRAL |> print(n = 5)
 
 ```
 
-##
 
 ```{r}
 # Legger p_bRALjRAL til pend_02_24
