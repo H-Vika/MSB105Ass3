@@ -1,0 +1,29 @@
+---
+title: "ag commenst"
+format: html
+editor: source
+---
+
+## Generelle kommentarer
+
+-   Solid arbeid. Fin formatert og klar kode.
+-   Vær litt mer konsekevnt med å bruke Quarto labels (for kryssreferanse) og captions. Gir et mer helhetlig inntrykk og er enkler å ha med å gjøre når en skjønner systemet.
+-   Dokumentet er reproduserbart. Flott!
+
+## Tips og Triks
+
+-   Første chunk bør ha label setup. Chunken med label setup leses hver gang før noe kode kjøres.
+-   Vil nabefale Quarto sin opjon `#|message: false` for å undertrykke meldinger fra pakkene.
+-   `lubridate` er nå en av kjernepakkene i `tidyverse`så den trenger mak ikke lenger å laste separat.
+-   Jeg satte `options(paged.print = FALSE)` i setup chunk-en. Jeg liker best denne output-en, men det er vel en smakssak.
+-   Jeg vil anbefale dere å splitte på to chunk-er genereringen av dataene og output av dataene i en formatert tabell.
+-   I big.mark byttet jeg ut <space> med uni-kode karakteren <narrow non breaking space> som jeg synes passer bedre. Med den siste ungår man også at tallene blir brekt over to linjer. (karakteren får jeg frem ved å bruke visual mode og insert > Special Characters > Insert Unicode … og så velge et blank felt på side nr. 2. Rett til venstre for ‰.)
+-   Disse pendlematrisene er noe herk å få ut i et dokument. En løsning er å gi dem en egen side og la denne være i landscape modus. 
+-   I tabell `tbl-stav`og følgende har jeg redusert til 1 desimal. Synes det gir en klarere tabell.
+-   Jeg har lagt inn label og caption for code-lsiting for å vise definisjon av funksjon som genererer pendlematriser.
+-   Har også lagt inn label og caption for å vise hvordan pendlematrisene kan lages i landscape modus.
+
+
+
+
+
