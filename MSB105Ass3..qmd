@@ -21,12 +21,16 @@ editor:
     wrap: sentence
 echo: false
 ---
-Pakkene brukt for oppgaven:
+
+Pakkene brukt i oppgaven:
+
 ```{r}
-library(tidyverse) |> suppressPackageStartupMessages()
-library(lubridate) |> suppressPackageStartupMessages()
-library(PxWebApiData) |> suppressPackageStartupMessages()
-library(flextable) |> suppressPackageStartupMessages()
+#| message: false
+library(tidyverse)
+library(PxWebApiData)
+library(flextable)
+
+options(paged.print = FALSE)
 ```
 
 Her skal pendle-mønsteret bli studert mellom en norsk region. dette er seks regioner rundt Boknafjorden. Total i de seks regionene så er det 20 kommuner. I denne oppgaven skal vi ta for oss at hver region er et arbeidsmarked og vi skal studere arbeidspendlingene som foregår i de regionene. 
@@ -73,6 +77,7 @@ returnApiQuery = TRUE
 
 ```
 Henter inn arbeidstakere som bor rundt Boknafjorden og jobber i kommuner over hele landet for perioden 2002-2024
+
 ```{r}
 #| label: hent-boBF
 #| cache: true
@@ -153,6 +158,7 @@ pend_02_24_arbBF |> print(n = 5)
 ```
 
 ## Komunesammenslåing
+
 ```{r}
 #| label: knr-u-SSV
 
@@ -424,8 +430,36 @@ pend_02_24 <- bind_rows(pend_02_24, p_bRALjRAL)
 
 ```
 
+
 ```{r}
-#| label: Test-pend_matris
+#| echo: true
+#| eval: false
+pend_02_24 |>
+  ungroup() |>
+  filter(aar == "2010") |>
+  select(bkom, akom, pendlere) |>
+  pivot_wider(
+    names_from = akom,
+    values_from = pendlere
+    ) |>
+  as_flextable(max_row = 30, show_coltype = FALSE) |>
+  line_spacing(space = 0.3, part = "all") |>
+  colformat_int(big.mark = ' ') |>
+  fontsize(size = 10) |> 
+  # set_table_properties(width = 0.15, layout = "autofit") |>
+  # padding(padding = 3) |>
+  delete_part("foote")
+```
+
+Resultatet kan man se i @tbl-Test-pend_matris.
+
+:::{.landscape}
+
+```{r}
+#| label: tbl-Test-pend-matris
+#| tbl-cap: Pendlematrise for Bokna-regionen for året 2010.
+#| echo: false
+# ag: label må begynne med tbl- for tabeller og fig- for figurer for at ting skal virke
 # Sjekker at ting ser greit ut ved å lage en foreløpig pendle-matrise for 2010
 
 pend_02_24 |>
@@ -438,12 +472,14 @@ pend_02_24 |>
     ) |>
   as_flextable(max_row = 30, show_coltype = FALSE) |>
   line_spacing(space = 0.3, part = "all") |>
-  colformat_int(big.mark = ' ') |>
-  set_table_properties(width = 0.15, layout = "autofit") |>
-  padding(padding = 3) |>
+  colformat_int(big.mark = ' ') |>
+  fontsize(size = 10) |> 
+  # set_table_properties(width = 0.15, layout = "autofit") |>
+  # padding(padding = 3) |>
   delete_part("foote")
 ```
 
+:::
 
 ## legge til totaler per bosted og arbeidssted
 
@@ -521,7 +557,14 @@ tab <- andel_pendle_data_02_24 |>
   select(-aar, -bkom_navn)
 
 names(tab) <- str_replace_all(names(tab), "_", "\n")
+```
 
+:::{.landscape}
+
+```{r}
+#| label: tbl-andel-pend-matris
+#| tbl-cap: Andel av arbeidsstyrken i hver kommune som pendler til ulike kommuner i året 2017.
+#| echo: false
 tab |>
   as_flextable(
     show_coltype = FALSE,
@@ -532,8 +575,9 @@ tab |>
   set_table_properties(width = 0.25, layout = "autofit") |>
   padding(padding = 3) |>
   delete_part("footer")
-
 ```
+
+:::
 
 ```{r}
 pend_02_24 |>
@@ -641,8 +685,6 @@ ba_tab_2020
 ## Pendling internt i region 49
 
 ```{r}
-#| label: tbl-intern49
-#| tbl-cap: " Bo- og arbeidsmarkedmatrise for region 49 for året 2015. Kommunene utenfor regionen er samlet i 9999."
 reg49 <- ba49
 
 pend_reg49_2020 <- pend_02_24 |>
@@ -657,14 +699,21 @@ pend_reg49_2020 <- pend_02_24 |>
     names_from  = arb49,
     values_from = pendlere
   )
+```
+
+
+```{r}
+#| label: tbl-intern49
+#| tbl-cap: "Bo- og arbeidsmarkedmatrise for region 49 for året 2015. 
+#| Kommunene utenfor regionen er samlet i 9999."
 
 flextable(
   pend_reg49_2020,
   cwidth = 0.75,
   cheight = 0.25
 )
-
 ```
+
 
 ### Hvor mange bodde i Sola (1124) kommune og jobbet i Kvitsøy (1144) kommune i 2020?
 
@@ -700,7 +749,7 @@ pend_02_24 |>
 
 ```{r}
 #| label: tbl-innut
-#| tbl-cap: "Viser hvor mange som pendlet inn og ut av arbeidsmarkedregion 49 (Stavanger/Sandnes) i år 2020"
+#| tbl-cap: "Viser hvor mange som pendlet inn og ut av arbeidsmarkedregion 49 (Stavanger/Sandnes) i år 2020. Tabellen er begrenset til kommunene i Bo- og arbeidsmarkedregion 49 som hadde større pendling ut enn inn til kommunen."
 reg49 <- ba49
 
 pend_2020 <- pend_02_24 |>
@@ -816,12 +865,11 @@ flextable(
 
 ```{r}
 utvalg <- c("k1133", "k1119", "k1144", "k1103", "k1130")
-
 ```
 
 ```{r}
 #| label: fig-utvlgpend
-#| fig-cap: "Internpendling blant utvalgte kommuner: Hjelmeland, Hå, Kvitsøy, Stavanger og Strand"
+#| fig-cap: "Internpendling blant utvalgte kommuner: Hjelmeland, Hå, Kvitsøy, Stavanger og Strand. Figuren viser andel arbeidstakere som bor og jobber i samme kommune\nUtvalgte kommuner 2002–2024."
 
 apd_0224_l |>
   filter(
@@ -839,8 +887,7 @@ apd_0224_l |>
   labs(
     x = NULL,
     y = "Andel (%)",
-    colour = "Kommune",
-    title = "Andel arbeidstakere som bor og jobber i samme kommune\nUtvalgte kommuner 2002–2024"
+    colour = "Kommune"
   ) +
   theme(legend.position = "bottom")
 
@@ -903,7 +950,7 @@ plot_pendlere(apd_0224_l, "k1103", grense = 1) +
 #| label: tbl-stav
 #| tbl-cap: "Andelene som pendler ut av Stavanger i 2023"
 tab_pendlere(apd_0224_l,"k1103", n = 7) |>
- colformat_double(digits = 3)
+ colformat_double(digits = 1)
 ```
 
 ### Hvordan har andelen arbeidstakere som både bor og jobber i hhv. Stavanger og Sandnes (dvs. bor og jobber i samme by) utviklet seg over tid?
@@ -962,7 +1009,7 @@ plot_pendlere(apd_0224_l, "k1108", grense = 1.7)
 #| label: tbl-sand
 #| tbl-cap: "Andelene som pendler ut av Sandnes i 2023"
 tab_pendlere(apd_0224_l, "k1108") |>
- colformat_double(digits = 3)
+ colformat_double(digits = 1)
 ```
 
 
@@ -982,7 +1029,7 @@ plot_pendlere(apd_0224_l, "k1124", grense = 3)
 #| label: tbl-sola
 #| tbl-cap: "Andelene som pendler ut av Sola i 2023"
 tab_pendlere(apd_0224_l, "k1124") |>
- colformat_double(digits = 3)
+ colformat_double(digits = 1)
 ```
 
 ## Hvor jobber folk bosatt i Klepp kommune?
@@ -1005,7 +1052,7 @@ plot_pendlere(apd_0224_l, "k1120", grense = 1.7)
 #| label: tbl-Klepp
 #| tbl-cap: "Andelene som pendler ut av Klepp i 2023"
 tab_pendlere(apd_0224_l, "k1120") |>
- colformat_double(digits = 3)
+ colformat_double(digits = 1)
 ```
 
 ## Hvor jobber folk bosatt i Haugesund kommune?
@@ -1048,7 +1095,7 @@ plot_pendlere(apd_0224_l, "k1149", grense = 1.7)
 #| label: tbl-Karm
 #| tbl-cap: "Pendling ut av Karmøy kommune i 2023."
 tab_pendlere(apd_0224_l, "k1149") |>
- colformat_double(digits = 3)
+ colformat_double(digits = 1)
 ```
 
 # Pendlematriser
@@ -1056,8 +1103,11 @@ tab_pendlere(apd_0224_l, "k1149") |>
 Lager pendle-matriser for årene: 2002,2005,2010,2015 og 2021
 
 ```{r}
-#| label: pend_mat_funksjon
-
+#| lst-label: lst-pendmat-funksjon
+#| lst-cap: Kode for funksjon som genererer pendlematriser..
+#| echo: true
+# ag: label må begynne med tbl- for tabeller. Underscore skaper problemer for pdf output og bør ikke brukes.
+# for kode listing (dvs. chunks) er det lst-label og lst-cap. I tillegg må en ha echo: true
 pend_mat <- function(data, aar_valgt) {
   
   data |>
@@ -1071,19 +1121,25 @@ pend_mat <- function(data, aar_valgt) {
     ) |>
     as_flextable(max_row = 30, show_coltype = FALSE) |>
     line_spacing(space = 0.3, part = "all") |>
-    colformat_int(big.mark = ' ') |>
+    colformat_int(big.mark = ' ') |>
     set_table_properties(width = 0.15, layout = "autofit") |>
-    padding(padding = 3) |>
+    #padding(padding = 3) |>
     delete_part("footer")
 }
-
 ```
 
+I @lst-pendmat-funksjon er gjengitt koden for en funksjon som genererer pendlematriser i flextable format.
 
+## Pendlematriser
+
+I tabellene @tbl-mat2002, @tbl-mat2005, @tbl-mat2010, @tbl-mat2015, @tbl-mat2023 og @tbl-mat2024 er gjengitt pendlematriser for Bokna-regionen for årene 2002, 2005, 2010, 2015, 2023 og 2024.
+
+:::{.landscape}
 
 ```{r}
 #| label: tbl-mat2002
 #| tbl-cap: "Pendler-matrise for Bokna regionen i år 2002"
+#| echo: false
 pend_mat(pendle_data_02_24, 2002)
 ```
 
@@ -1091,9 +1147,13 @@ pend_mat(pendle_data_02_24, 2002)
 ```{r}
 #| label: tbl-mat2005
 #| tbl-cap: "Pendler-matrise for Bokna regionen i år 2005"
+#| echo: false
 pend_mat(pendle_data_02_24, 2005)
 ```
 
+:::
+
+:::{.landscape}
 
 ```{r}
 #| label: tbl-mat2010
@@ -1108,10 +1168,20 @@ pend_mat(pendle_data_02_24, 2010)
 pend_mat(pendle_data_02_24, 2015)
 ```
 
+:::
+
+:::{.landscape}
 
 ```{r}
-#| label: tbl-mat2021
-#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2021"
-pend_mat(pendle_data_02_24, 2021)
-
+#| label: tbl-mat2023
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2023"
+pend_mat(pendle_data_02_24, 2023)
 ```
+
+```{r}
+#| label: tbl-mat2024
+#| tbl-cap: "Pendler-matrise for Bokna regionen i år 2024"
+pend_mat(pendle_data_02_24, 2024)
+```
+
+:::
